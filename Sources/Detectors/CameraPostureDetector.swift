@@ -249,10 +249,11 @@ class CameraPostureDetector: NSObject, PostureDetector {
         }
     }
 
-    private func markFrameReceived() {
+    private func markFrameReceived(from output: AVCaptureOutput) {
         DispatchQueue.main.async {
-            // Ignore frames that were in flight when the camera stopped
-            guard self.lifecycleState != .stopped, !self.hasReceivedFrame else { return }
+            // Ignore frames from a session that was stopped (or replaced by a newer start)
+            // while this notification was queued
+            guard output === self.videoOutput, !self.hasReceivedFrame else { return }
             self.hasReceivedFrame = true
             self.onConnectionStateChange?(true)
         }
@@ -643,8 +644,6 @@ extension CameraPostureDetector: AVCaptureVideoDataOutputSampleBufferDelegate {
         }
 
         // Vision runs synchronously, so position data from this frame is already stored
-        if !hasReceivedFrame {
-            markFrameReceived()
-        }
+        markFrameReceived(from: output)
     }
 }
